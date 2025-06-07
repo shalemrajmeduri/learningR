@@ -1,0 +1,81 @@
+from geopy.geocoders import Nominatim
+from math import radians, sin, cos, sqrt, atan2
+import time
+
+# Haversine formula to calculate distance in km
+def haversine_distance(lat1, lon1, lat2, lon2):
+    R = 6371.0
+    lat1_rad, lon1_rad = radians(lat1), radians(lon1)
+    lat2_rad, lon2_rad = radians(lat2), radians(lon2)
+    dlat = lat2_rad - lat1_rad
+    dlon = lon2_rad - lon1_rad
+    a = sin(dlat / 2)**2 + cos(lat1_rad) * cos(lat2_rad) * sin(dlon / 2)**2
+    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+    return R * c
+
+# Initialize geolocator
+geolocator = Nominatim(user_agent="distance-calculator")
+
+# Your home location
+home_address = "NTR Circle, Vijayawada, Andhra Pradesh, India"  # change if needed
+home_location = geolocator.geocode(home_address)
+
+if not home_location:
+    print("Could not geocode your home address.")
+    exit()
+
+home_lat, home_lon = home_location.latitude, home_location.longitude
+print(f"Home Coordinates: {home_lat}, {home_lon}\n")
+
+# Load school names from file
+try:
+    with open("schools.txt", "r", encoding="utf-8") as f:
+        school_names = [line.strip() for line in f if line.strip()]
+except FileNotFoundError:
+    print("schools.txt not found.")
+    exit()
+
+# Map some schools to their cities (expand as needed)
+school_city_map = {
+    "MPUPS POTHEPALLE": "Machilipatnam",
+    "MPPS ULLIPALEM": "Machilipatnam",
+    "ZPHS CHITTIPALEM": "Machilipatnam",
+    "MPPS CHITTIPALEM": "Machilipatnam",
+    "MPPS ARISEPALLI": "Machilipatnam",
+    "ZPHS BUDDALAPALEM": "Machilipatnam",
+    "MPPS BUDDALAPALEM": "Machilipatnam",
+    "MPPS POTHIREDDIPALEM": "Machilipatnam",
+    "MPUP SULTHANAGARAM": "Machilipatnam",
+    "MPUPS CAMPBELPET": "Machilipatnam",
+    "MPPS NAVEENMITAL COLONY": "Machilipatnam",
+    "MPPS 12WARD BUNGLOW": "Pedana",
+    "MPPS 23WARD BRAHMAPURAM": "Pedana",
+    "MPPS 20WARD R LW COLONY": "Pedana",
+    "MPPS 11WARD KAPULA VEEDI": "Pedana",
+    "M P P SL G 2WARD": "Pedana",
+    "M P P S 7 WARD THOTAMULA": "Pedana",
+    "MPUPS BALLIPARRU": "Pedana",
+    "ZPHS NANDAMURU": "Pedana",
+    "ZPHS PENUMALLI": "Pedana",
+    "MPPS PENUMALLI": "Pedana",
+    "MPUPS KONKEPUDI": "Pedana",
+    "MPPS PULLAPADU": "Pedana",
+    "MPPS GUDUR II WARD": "Gudur",
+    "MPPS KAPPALADODDI": "Gudur",
+}
+
+print("Distances to schools:\n")
+
+for school in school_names:
+    city = school_city_map.get(school, "Andhra Pradesh")
+    query = f"{school}, {city}, Andhra Pradesh, India"
+    try:
+        location = geolocator.geocode(query)
+        if location:
+            dist = haversine_distance(home_lat, home_lon, location.latitude, location.longitude)
+            print(f"{school}: {dist:.2f} km")
+        else:
+            print(f"{school}: Location not found for query '{query}'")
+    except Exception as e:
+        print(f"Error processing {school}: {e}")
+    time.sleep(1)  # Respect Nominatim usage policy
