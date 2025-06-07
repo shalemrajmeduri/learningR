@@ -1,0 +1,72 @@
+from geopy.geocoders import Nominatim
+from math import radians, sin, cos, sqrt, atan2
+import time
+import re
+
+def haversine_distance(lat1, lon1, lat2, lon2):
+    R = 6371.0
+    lat1_rad, lon1_rad = radians(lat1), radians(lon1)
+    lat2_rad, lon2_rad = radians(lat2), radians(lon2)
+    dlat = lat2_rad - lat1_rad
+    dlon = lon2_rad - lon1_rad
+    a = sin(dlat / 2)**2 + cos(lat1_rad) * cos(lat2_rad) * sin(dlon / 2)**2
+    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+    return R * c
+
+def clean_school_name(line):
+    # Remove leading numbers and spaces (e.g. "1. 28163701204 MPUPS POTHEPALLE" -> "MPUPS POTHEPALLE")
+    # Also remove any leading list number + dot if present.
+    line = re.sub(r'^\d+\.?\s*', '', line)  # Remove list numbering like "1." or "10."
+    line = re.sub(r'^\d+\s+', '', line)      # Remove leading codes like "28163701204"
+    return line.strip()
+
+# Mapping of schools to city and pincode for better geocoding accuracy
+school_info_map = {
+    "MPUPS POTHEPALLE": {"city": "Machilipatnam", "pincode": "521001"},
+    "MPPS ULLIPALEM": {"city": "Machilipatnam", "pincode": "521002"},
+    "ZPHS CHITTIPALEM": {"city": "Machilipatnam", "pincode": "521003"},
+    "MPPS ARISEPALLI": {"city": "Machilipatnam", "pincode": "521004"},
+    "ZPHS BUDDALAPALEM": {"city": "Machilipatnam", "pincode": "521005"},
+    "MPPS POTHIREDDIPALEM": {"city": "Machilipatnam", "pincode": "521006"},
+    "MPUP SULTHANAGARAM": {"city": "Machilipatnam", "pincode": "521007"},
+    "MPUPS CAMPBELPET": {"city": "Machilipatnam", "pincode": "521008"},
+    "MPPS NAVEENMITAL COLONY": {"city": "Machilipatnam", "pincode": "521009"},
+    "MPPS 12WARD BUNGLOW": {"city": "Pedana", "pincode": "521366"},
+    "MPPS 23WARD BRAHMAPURAM": {"city": "Pedana", "pincode": "521367"},
+    "MPPS 20WARD R LW COLONY": {"city": "Pedana", "pincode": "521368"},
+    "MPPS 11WARD KAPULA VEEDI": {"city": "Pedana", "pincode": "521369"},
+    "MPPS GUDUR II WARD": {"city": "Gudur", "pincode": "524101"},
+    "MPPS KAPPALADODDI": {"city": "Gudur", "pincode": "524102"},
+    # Add other schools here...
+}
+
+geolocator = Nominatim(user_agent="distance-calculator")
+
+home_address = "NTR Circle, Vijayawada, Andhra Pradesh, India"
+home_location = geolocator.geocode(home_address)
+if not home_location:
+    print("Could not geocode your home address.")
+    exit()
+home_lat, home_lon = home_location.latitude, home_location.longitude
+
+with open("schools.txt", "r", encoding="utf-8") as f:
+    raw_lines = [line.strip() for line in f if line.strip()]
+
+school_names = [clean_school_name(line) for line in raw_lines]
+
+for school in school_names:
+    info = school_info_map.get(school, {"city": "Andhra Pradesh", "pincode": ""})
+    query_parts = [school, info["city"], "Andhra Pradesh", "India"]
+    if info["pincode"]:
+        query_parts.append(info["pincode"])
+    query = ", ".join(query_parts)
+    try:
+        location = geolocator.geocode(query)
+        if location:
+            dist = haversine_distance(home_lat, home_lon, location.latitude, location.longitude)
+            print(f"{school}: {dist:.2f} km")
+        else:
+            print(f"{school}: Location not found for '{query}'")
+    except Exception as e:
+        print(f"Error geocoding {school}: {e}")
+    time.sleep(1)  # To avoid hitting geocoding rate limits
